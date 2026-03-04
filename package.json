@@ -1,0 +1,26 @@
+{
+  "name": "ping-ping",
+  "version": "1.0.0",
+  "description": "A Windows notification relay for AI agents — system tray app with HTTP API for toast notifications",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev"
+  },
+  "keywords": [
+    "ai-agents",
+    "notifications",
+    "windows",
+    "system-tray",
+    "electron"
+  ],
+  "author": "itsLucas02",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0"
+  }
+}

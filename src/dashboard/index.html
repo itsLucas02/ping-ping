@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ping-ping — Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-left">
+          <span class="logo">🔔</span>
+          <h1 class="title">ping-ping</h1>
+          <span class="subtitle">Notification Dashboard</span>
+        </div>
+        <div class="header-right">
+          <div class="status-dot" id="statusDot" title="Server status"></div>
+          <span class="status-label" id="statusLabel">Connecting…</span>
+          <button
+            class="btn-clear"
+            id="clearBtn"
+            title="Clear all notifications"
+          >
+            🗑 Clear
+          </button>
+        </div>
+      </header>
+
+      <!-- Notification count bar -->
+      <div class="count-bar">
+        <span class="count-label" id="countLabel">No notifications yet</span>
+        <span class="port-badge">:19999</span>
+      </div>
+
+      <!-- Notification list -->
+      <main class="notification-list" id="notificationList">
+        <!-- Empty state -->
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">📭</div>
+          <p class="empty-title">No notifications yet</p>
+          <p class="empty-sub">Agents can ping you via:</p>
+          <code class="empty-code"
+            >curl -X POST http://localhost:19999/ping<br />
+            -H "Content-Type: application/json"<br />
+            -d '{"title":"Agent","message":"Done!","status":"success"}'</code
+          >
+        </div>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
