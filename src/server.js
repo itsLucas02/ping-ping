@@ -26,20 +26,16 @@ function createServer(onPing) {
     const { title, message, status } = req.body || {};
 
     if (!title || typeof title !== "string" || title.trim() === "") {
-      return res
-        .status(400)
-        .json({
-          ok: false,
-          error: "`title` is required and must be a non-empty string.",
-        });
+      return res.status(400).json({
+        ok: false,
+        error: "`title` is required and must be a non-empty string.",
+      });
     }
     if (!message || typeof message !== "string" || message.trim() === "") {
-      return res
-        .status(400)
-        .json({
-          ok: false,
-          error: "`message` is required and must be a non-empty string.",
-        });
+      return res.status(400).json({
+        ok: false,
+        error: "`message` is required and must be a non-empty string.",
+      });
     }
 
     const resolvedStatus = status || "info";
@@ -82,6 +78,17 @@ function createServer(onPing) {
   app.delete("/api/notifications", (req, res) => {
     clearNotifications();
     res.json({ ok: true });
+  });
+
+  // Catch malformed JSON bodies (e.g. empty or invalid payloads sent by agents)
+  // eslint-disable-next-line no-unused-vars
+  app.use((err, req, res, next) => {
+    if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "Invalid JSON in request body." });
+    }
+    next(err);
   });
 
   return new Promise((resolve, reject) => {

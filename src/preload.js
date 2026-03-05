@@ -5,4 +5,5 @@ contextBridge.exposeInMainWorld("pingPing", {
   onNewNotification: (callback) => {
     ipcRenderer.on("new-notification", (_event, data) => callback(data));
   },
+  restartServer: () => ipcRenderer.invoke("restart-server"),
 });

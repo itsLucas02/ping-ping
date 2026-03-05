@@ -1,5 +1,6 @@
 const API_BASE = "http://localhost:19999";
 const POLL_INTERVAL = 2500;
+const TIMESTAMP_REFRESH_INTERVAL = 30_000; // refresh relative times every 30 s
 
 const STATUS_ICONS = {
   success: "✅",
@@ -18,17 +19,34 @@ const statusDot = document.getElementById("statusDot");
 const statusLabel = document.getElementById("statusLabel");
 const countLabel = document.getElementById("countLabel");
 const clearBtn = document.getElementById("clearBtn");
+const restartBtn = document.getElementById("restartBtn");
 
 // ─── Boot ────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
   fetchAndRender();
   startPolling();
+  startTimestampRefresh();
 
   clearBtn.addEventListener("click", async () => {
     await fetch(`${API_BASE}/api/notifications`, { method: "DELETE" });
     knownIds.clear();
     clearCards();
     updateCount(0);
+  });
+
+  restartBtn.addEventListener("click", async () => {
+    restartBtn.disabled = true;
+    restartBtn.textContent = "Restarting…";
+    try {
+      if (window.pingPing && window.pingPing.restartServer) {
+        await window.pingPing.restartServer();
+      }
+    } finally {
+      setTimeout(() => {
+        restartBtn.disabled = false;
+        restartBtn.textContent = "↺ Restart";
+      }, 1500);
+    }
   });
 
   // Listen for real-time push from Electron IPC (new notification)
@@ -85,6 +103,15 @@ function startPolling() {
   pollTimer = setInterval(fetchAndRender, POLL_INTERVAL);
 }
 
+// ─── Live timestamp refresh ──────────────────────────────────
+function startTimestampRefresh() {
+  setInterval(() => {
+    listEl.querySelectorAll(".card-time[data-timestamp]").forEach((el) => {
+      el.textContent = formatTime(el.dataset.timestamp);
+    });
+  }, TIMESTAMP_REFRESH_INTERVAL);
+}
+
 // ─── Render helpers ──────────────────────────────────────────
 function prependCard(notif) {
   hideEmpty();
@@ -113,7 +140,7 @@ function buildCard({ id, title, message, status, timestamp }) {
         <span class="card-badge ${s}">${escHtml(s)}</span>
       </div>
       <p class="card-message">${escHtml(message)}</p>
-      <p class="card-time">${formatTime(timestamp)}</p>
+      <p class="card-time" data-timestamp="${escHtml(timestamp)}">${formatTime(timestamp)}</p>
     </div>
   `;
   return card;

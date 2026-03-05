@@ -141,6 +141,27 @@ body {
   color: var(--error);
 }
 
+.btn-restart {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-restart:hover {
+  background: rgba(108, 99, 255, 0.12);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.btn-restart:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* ─── Count Bar ────────────────────────────────────────────── */
 .count-bar {
   display: flex;

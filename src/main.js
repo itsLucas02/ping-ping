@@ -6,10 +6,21 @@ const {
   Notification,
   nativeImage,
   shell,
+  ipcMain,
 } = require("electron");
 const path = require("path");
+const { spawn } = require("child_process");
 const { createServer } = require("./server");
 const { PORT } = require("./config");
+
+// Fully relaunch the Electron process — reliable on Windows via npm start
+function relaunchApp() {
+  spawn(process.execPath, process.argv.slice(1), {
+    detached: true,
+    stdio: "ignore",
+  }).unref();
+  app.exit(0);
+}
 
 // Prevent multiple instances
 const gotLock = app.requestSingleInstanceLock();
@@ -33,8 +44,20 @@ app.whenReady().then(async () => {
 
   setupTray();
   setupDashboardWindow();
+  await startServer();
 
-  // Start HTTP server, fire toast on each ping
+  // IPC: dashboard restart button — full app relaunch
+  ipcMain.handle("restart-server", () => relaunchApp());
+});
+
+app.on("window-all-closed", (e) => {
+  // Prevent default quit — we live in the tray
+  e.preventDefault();
+});
+
+// ─── Server lifecycle ─────────────────────────────────────────────────────────
+
+async function startServer() {
   server = await createServer((notification) => {
     showToast(notification);
     flashTray();
@@ -43,12 +66,7 @@ app.whenReady().then(async () => {
       dashboardWindow.webContents.send("new-notification", notification);
     }
   });
-});
-
-app.on("window-all-closed", (e) => {
-  // Prevent default quit — we live in the tray
-  e.preventDefault();
-});
+}
 
 // ─── Tray ─────────────────────────────────────────────────────────────────────
 
@@ -80,6 +98,11 @@ function buildTrayMenu() {
     {
       label: `Listening on :${PORT}`,
       enabled: false,
+    },
+    { type: "separator" },
+    {
+      label: "↺ Restart Server",
+      click: () => relaunchApp(),
     },
     { type: "separator" },
     {
