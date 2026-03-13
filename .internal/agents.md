@@ -70,8 +70,22 @@ npm install       # Install dependencies
 npm start         # Run the app (Electron)
 ```
 
-## When making changes
+## Integration with Codex CLI
 
-- Run `npm start` to test after changes
-- Test API with curl: `curl -X POST http://localhost:19999/ping -H "Content-Type: application/json" -d "{\"title\":\"Test\",\"message\":\"Hello\",\"status\":\"success\"}"`
-- Check the PRD.md for full requirements and the TODO.md for current progress
+To have your Codex CLI agent use **ping-ping** for all updates, approvals, and completions, add the following command pattern to its workflow or system instructions:
+
+```bash
+# General notification command
+curl.exe -X POST http://localhost:19999/ping -H "Content-Type: application/json" -d "{\"title\":\"Codex\", \"message\":\"[Your Message Here]\", \"status\":\"[status]\"}"
+```
+
+### Protocol for Codex
+Use the following instruction to ensure Codex pings you for everything:
+
+> "Use the `ping-ping` tool (`http://localhost:19999/ping`) to notify me about **every** significant event. Do not wait for long-running tasks; use it for:
+> - **Completion** (Short or long): Use `status: "success"`
+> - **Questions/Approvals**: Use `status: "warning"`
+> - **Permissions Required**: Use `status: "error"` (to get my attention immediately)
+> - **General Progress**: Use `status: "info"`
+>
+> Always send a ping immediately when you are blocked or have finished a step."
