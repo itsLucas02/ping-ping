@@ -14,11 +14,13 @@
   --error: #ef4444;
   --warning: #f59e0b;
   --info: #3b82f6;
+  --busy: #8b5cf6;
 
   --success-bg: rgba(16, 185, 129, 0.1);
   --error-bg: rgba(239, 68, 68, 0.1);
   --warning-bg: rgba(245, 158, 11, 0.1);
   --info-bg: rgba(59, 130, 246, 0.1);
+  --busy-bg: rgba(139, 92, 246, 0.1);
 
   --radius: 12px;
   --radius-sm: 8px;
@@ -297,6 +299,9 @@ body {
 .notification-card.info::before {
   background: var(--info);
 }
+.notification-card.busy::before {
+  background: var(--busy);
+}
 
 .notification-card.success {
   border-left-color: rgba(16, 185, 129, 0.2);
@@ -309,6 +314,9 @@ body {
 }
 .notification-card.info {
   border-left-color: rgba(59, 130, 246, 0.2);
+}
+.notification-card.busy {
+  border-left-color: rgba(139, 92, 246, 0.2);
 }
 
 .card-icon {
@@ -364,6 +372,10 @@ body {
 .card-badge.info {
   background: var(--info-bg);
   color: var(--info);
+}
+.card-badge.busy {
+  background: var(--busy-bg);
+  color: var(--busy);
 }
 
 .card-message {

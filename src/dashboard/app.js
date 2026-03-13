@@ -7,6 +7,7 @@ const STATUS_ICONS = {
   error: "❌",
   warning: "⚠️",
   info: "ℹ️",
+  busy: "⏳",
 };
 
 let knownIds = new Set();

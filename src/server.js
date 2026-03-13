@@ -6,7 +6,7 @@ const {
   clearNotifications,
 } = require("./store");
 
-const VALID_STATUSES = ["success", "error", "warning", "info"];
+const VALID_STATUSES = ["success", "error", "warning", "info", "busy"];
 
 function createServer(onPing) {
   const app = express();

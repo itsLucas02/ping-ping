@@ -53,7 +53,7 @@ ping-ping/
 }
 ```
 
-- `status` options: `success`, `error`, `warning`, `info` (default: `info`)
+- `status` options: `success`, `error`, `warning`, `info`, `busy` (default: `info`)
 
 ## Key Design Decisions
 
@@ -98,5 +98,6 @@ Use the following instruction to ensure Codex pings you for everything:
 > - **Questions/Approvals**: Use `status: "warning"`
 > - **Permissions Required**: Use `status: "error"` (to get my attention immediately)
 > - **General Progress**: Use `status: "info"`
+> - **Long Tasks Started**: Use `status: "busy"`
 >
 > Always send a ping immediately when you are blocked or have finished a step."

@@ -25,7 +25,7 @@ param(
 
     [string]$Message,
 
-    [ValidateSet('success', 'error', 'warning', 'info')]
+    [ValidateSet('success', 'error', 'warning', 'info', 'busy')]
     [string]$Status = 'info',
 
     [string]$Token = $env:PING_TOKEN,
@@ -58,7 +58,7 @@ if ($PrintHelp -or ([string]::IsNullOrWhitespace($Title) -and [string]::IsNullOr
     Write-Host " PARAMETERS:"
     Write-Host "   -Title     (Required) The header of the notification."
     Write-Host "   -Message   (Required) The body text."
-    Write-Host "   -Status    (Optional) success | error | warning | info (default: info)"
+    Write-Host "   -Status    (Optional) success | error | warning | info | busy (default: info)"
     Write-Host "   -Token     (Optional) Auth token if PING_TOKEN is set in the environment."
     Write-Host "   -Help, -h  Show this documentation."
     Write-Host ""
