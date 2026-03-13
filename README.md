@@ -67,7 +67,7 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:19999/ping' -Method Post -ContentType '
 
 ### Example Usage (ping.ps1 wrapper)
 
-For convenience, a `ping.ps1` helper script is included in the root directory:
+For convenience, a `ping.ps1` helper script is included in the root directory. **If the ping-ping server is not currently running, this script will automatically launch it in the background for you.**
 
 ```powershell
 .\ping.ps1 -Title "Codex CLI" -Message "Task successfully completed!" -Status success

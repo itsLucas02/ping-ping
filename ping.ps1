@@ -34,6 +34,7 @@ param(
 )
 
 $Uri = "http://127.0.0.1:19999/ping"
+$HealthUri = "http://127.0.0.1:19999/health"
 
 $Payload = @{
     title   = $Title
@@ -49,6 +50,27 @@ if (![string]::IsNullOrEmpty($Token)) {
     $Headers["X-PING-TOKEN"] = $Token
 }
 
+# 1. Health check
+$serverRunning = $false
+try {
+    $health = Invoke-RestMethod -Uri $HealthUri -Method Get -ErrorAction Stop
+    if ($health.ok) {
+        $serverRunning = $true
+    }
+} catch {
+    # Server is likely offline
+}
+
+# 2. Auto-start if not running
+if (-not $serverRunning) {
+    Write-Host "ping-ping server is offline. Starting it in the background..."
+    Start-Process -FilePath "cmd.exe" -ArgumentList "/c npm start" -WorkingDirectory $PSScriptRoot -WindowStyle Hidden
+    
+    Write-Host "Waiting for server to spin up..."
+    Start-Sleep -Seconds 5
+}
+
+# 3. Send the notification
 try {
     $Response = Invoke-RestMethod -Uri $Uri -Method Post -Headers $Headers -Body $Payload -ErrorAction Stop
     Write-Output "Ping sent successfully (ID: $($Response.id))"
