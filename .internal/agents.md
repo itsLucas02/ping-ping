@@ -72,11 +72,21 @@ npm start         # Run the app (Electron)
 
 ## Integration with Codex CLI
 
-To have your Codex CLI agent use **ping-ping** for all updates, approvals, and completions, add the following command pattern to its workflow or system instructions:
+To have your Codex CLI agent use **ping-ping** for all updates, approvals, and completions safely on Windows, add the following to its workflow or system instructions:
 
-```bash
-# General notification command
-curl.exe -X POST http://localhost:19999/ping -H "Content-Type: application/json" -d "{\"title\":\"Codex\", \"message\":\"[Your Message Here]\", \"status\":\"[status]\"}"
+### Recommended Command (PowerShell)
+
+**Avoid using inline JSON with `curl` on Windows.** Instead, use the native `Invoke-RestMethod` command:
+
+```powershell
+$body = @{ title='Codex'; message='[Your Message Here]'; status='[status]' } | ConvertTo-Json -Compress
+Invoke-RestMethod -Uri 'http://127.0.0.1:19999/ping' -Method Post -ContentType 'application/json' -Body $body
+```
+
+Or, if the `ping.ps1` helper is available in the workspace:
+
+```powershell
+.\ping.ps1 -Title "Codex" -Message "[Your Message Here]" -Status "[status]"
 ```
 
 ### Protocol for Codex

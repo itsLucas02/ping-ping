@@ -47,11 +47,30 @@ Simply tell your AI agent to run a `curl` command when it finishes a task.
 
 ### Example Usage (cURL)
 
+**⚠️ Note for Windows Users**: Inline JSON in `curl` can often fail due to shell escaping. It's safer to use a payload file or PowerShell (see below).
+
+If using `curl`, save your payload as `ping.json` and use `--data-binary`:
 ```bash
-# In your terminal or as an agent command:
 curl.exe -X POST http://localhost:19999/ping ^
   -H "Content-Type: application/json" ^
-  -d "{\"title\":\"My AI Assistant\", \"message\":\"Task successfully completed!\", \"status\":\"success\"}"
+  --data-binary @ping.json
+```
+
+### Example Usage (PowerShell)
+
+Built-in Windows native method (avoids escaping issues):
+
+```powershell
+$body = @{ title='Codex'; message='Task successfully completed!'; status='success' } | ConvertTo-Json -Compress
+Invoke-RestMethod -Uri 'http://127.0.0.1:19999/ping' -Method Post -ContentType 'application/json' -Body $body
+```
+
+### Example Usage (ping.ps1 wrapper)
+
+For convenience, a `ping.ps1` helper script is included in the root directory:
+
+```powershell
+.\ping.ps1 -Title "Codex CLI" -Message "Task successfully completed!" -Status success
 ```
 
 ### Supported Statuses
@@ -64,11 +83,30 @@ curl.exe -X POST http://localhost:19999/ping ^
 
 ## 📋 API Reference
 
-- `GET /health`: Check if the server is running.
-- `POST /ping`: Send a notification.
-  - Body: `{"title": "string", "message": "string", "status": "string"}`
-- `GET /api/notifications`: Retrieve notification history.
-- `DELETE /api/notifications`: Clear notification history.
+- `GET /health`
+  - Returns: `{ "ok": true, "service": "ping-ping", "uptime": 123 }`
+- `POST /ping`
+  - Body: `{"title": "string", "message": "string", "status": "string"}` (also accepts `application/x-www-form-urlencoded` or URL query params contextually).
+  - Returns `202 Accepted` with `{ "ok": true, "id": "...", "ts": "..." }` on success.
+- `GET /api/notifications`
+  - Retrieve notification history.
+- `DELETE /api/notifications`
+  - Clear notification history.
+
+### Error Schema
+Failed requests return `400 Bad Request`, `429 Too Many Requests`, or `401 Unauthorized` with a structured JSON error:
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "MISSING_TITLE",
+    "hint": "The `title` field is required and must be a non-empty string."
+  }
+}
+```
+
+### Authentication (Optional)
+If the `PING_TOKEN` environment variable is set when launching `ping-ping`, all `POST /ping` requests must include an `X-PING-TOKEN: <your_token>` header.
 
 ## 🛠️ Built With
 
