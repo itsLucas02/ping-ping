@@ -21,17 +21,58 @@ Optional. Auth token (X-PING-TOKEN) if the server requires it. Alternatively, se
 .\ping.ps1 -Title "Codex CLI" -Message "Task successfully completed!" -Status success
 #>
 param(
-    [Parameter(Mandatory=$true)]
     [string]$Title,
 
-    [Parameter(Mandatory=$true)]
     [string]$Message,
 
     [ValidateSet('success', 'error', 'warning', 'info')]
     [string]$Status = 'info',
 
-    [string]$Token = $env:PING_TOKEN
+    [string]$Token = $env:PING_TOKEN,
+
+    [Alias('h')]
+    [switch]$PrintHelp
 )
+
+$AppVersion = "1.0.1"
+
+# Automatically print a robust AI-friendly manual if --help is requested or if completely blind (no args)
+if ($PrintHelp -or ([string]::IsNullOrWhitespace($Title) -and [string]::IsNullOrWhitespace($Message))) {
+    Write-Host ""
+    Write-Host "============================================================"
+    Write-Host " 🔔 ping-ping helper (v$AppVersion) - AI Workspace integration"
+    Write-Host "============================================================"
+    Write-Host ""
+    Write-Host " DESCRIPTION:"
+    Write-Host "   Sends a local Windows notification to the ping-ping dashboard."
+    Write-Host "   If the ping-ping server is offline, this script automatically starts it."
+    Write-Host ""
+    Write-Host " AI AGENT CONTEXT & DISCOVERY:"
+    Write-Host "   - To learn how to integrate this tool into your workflow..."
+    Write-Host "   - To discover newly added features and version updates..."
+    Write-Host "   👉 READ THE FILE: .internal/agents.md"
+    Write-Host ""
+    Write-Host " USAGE:"
+    Write-Host "   .\ping.ps1 -Title <string> -Message <string> [-Status <string>]"
+    Write-Host ""
+    Write-Host " PARAMETERS:"
+    Write-Host "   -Title     (Required) The header of the notification."
+    Write-Host "   -Message   (Required) The body text."
+    Write-Host "   -Status    (Optional) success | error | warning | info (default: info)"
+    Write-Host "   -Token     (Optional) Auth token if PING_TOKEN is set in the environment."
+    Write-Host "   -Help, -h  Show this documentation."
+    Write-Host ""
+    Write-Host " EXAMPLES:"
+    Write-Host "   .\ping.ps1 -Title `"Codex`" -Message `"Hello World`" -Status success"
+    Write-Host "============================================================"
+    exit 0
+}
+
+# Enforce required parameters manually so PowerShell doesn't hang blocking for User Input
+if ([string]::IsNullOrWhitespace($Title) -or [string]::IsNullOrWhitespace($Message)) {
+    Write-Error "Both -Title and -Message are required. Run '.\ping.ps1 --help' for usage docs."
+    exit 1
+}
 
 $Uri = "http://127.0.0.1:19999/ping"
 $HealthUri = "http://127.0.0.1:19999/health"
