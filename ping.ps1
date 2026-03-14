@@ -108,19 +108,52 @@ if (-not $serverRunning) {
     Start-Process -FilePath "cmd.exe" -ArgumentList "/c npm start" -WorkingDirectory $PSScriptRoot -WindowStyle Hidden
     
     Write-Host "Waiting for server to spin up..."
-    Start-Sleep -Seconds 5
+    
+    $maxStartupRetries = 5
+    $retryInterval = 3 # seconds
+    $startupSuccess = $false
+
+    for ($i = 1; $i -le $maxStartupRetries; $i++) {
+        Start-Sleep -Seconds $retryInterval
+        Write-Host "Checking health (attempt $i/$maxStartupRetries)..."
+        try {
+            $health = Invoke-RestMethod -Uri $HealthUri -Method Get -ErrorAction Stop
+            if ($health.ok) {
+                $startupSuccess = $true
+                break
+            }
+        } catch {
+            # Continue waiting
+        }
+    }
+
+    if (-not $startupSuccess) {
+        Write-Error "ping-ping server failed to start after $(($maxStartupRetries * $retryInterval)) seconds."
+        exit 1
+    }
 }
 
-# 3. Send the notification
-try {
-    $Response = Invoke-RestMethod -Uri $Uri -Method Post -Headers $Headers -Body $Payload -ErrorAction Stop
-    Write-Output "Ping sent successfully (ID: $($Response.id))"
-} catch {
-    Write-Error "Failed to send ping."
-    if ($_.ErrorDetails -and $_.ErrorDetails.Message) {
-        Write-Error "Server response: $($_.ErrorDetails.Message)"
-    } else {
-        Write-Error $_.Exception.Message
+# 3. Send the notification (with minor retry logic for transient startup delay)
+$maxSendRetries = 3
+$sendSuccess = $false
+
+for ($i = 1; $i -le $maxSendRetries; $i++) {
+    try {
+        $Response = Invoke-RestMethod -Uri $Uri -Method Post -Headers $Headers -Body $Payload -ErrorAction Stop
+        Write-Output "Ping sent successfully (ID: $($Response.id))"
+        $sendSuccess = $true
+        break
+    } catch {
+        if ($i -eq $maxSendRetries) {
+            Write-Error "Failed to send ping after $maxSendRetries attempts."
+            if ($_.ErrorDetails -and $_.ErrorDetails.Message) {
+                Write-Error "Server response: $($_.ErrorDetails.Message)"
+            } else {
+                Write-Error $_.Exception.Message
+            }
+            exit 1
+        }
+        Write-Warning "Notification failed, retrying in 2s... (attempt $i/$maxSendRetries)"
+        Start-Sleep -Seconds 2
     }
-    exit 1
 }
