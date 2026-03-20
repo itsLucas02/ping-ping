@@ -321,6 +321,9 @@ body {
 
 .card-icon {
   font-size: 20px;
+  width: 28px; /* Fixed width for consistent alignment */
+  display: flex;
+  justify-content: center;
   flex-shrink: 0;
   margin-top: 1px;
 }
