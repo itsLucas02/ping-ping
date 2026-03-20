@@ -104,12 +104,22 @@ try {
 
 # 2. Auto-start if not running
 if (-not $serverRunning) {
+    $LogFile = Join-Path $env:APPDATA "ping-ping\startup.log"
+    $LogDir = Split-Path $LogFile
+    if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force }
+
     Write-Host "ping-ping server is offline. Starting it in the background..."
-    Start-Process -FilePath "cmd.exe" -ArgumentList "/c npm start" -WorkingDirectory $PSScriptRoot -WindowStyle Hidden
+    
+    # Use direct Node execution via cmd for redirection with hidden window
+    # Node modules path needs careful escaping for cmd.exe
+    $ElectronCli = Join-Path $PSScriptRoot "node_modules\electron\cli.js"
+    $CmdArgs = "/c node `"$ElectronCli`" . --no-sandbox > `"$LogFile`" 2>&1"
+    
+    Start-Process -FilePath "cmd.exe" -ArgumentList $CmdArgs -WorkingDirectory $PSScriptRoot -WindowStyle Hidden
     
     Write-Host "Waiting for server to spin up..."
     
-    $maxStartupRetries = 5
+    $maxStartupRetries = 10
     $retryInterval = 3 # seconds
     $startupSuccess = $false
 
@@ -129,6 +139,7 @@ if (-not $serverRunning) {
 
     if (-not $startupSuccess) {
         Write-Error "ping-ping server failed to start after $(($maxStartupRetries * $retryInterval)) seconds."
+        Write-Error "Check '$LogFile' for details."
         exit 1
     }
 }
