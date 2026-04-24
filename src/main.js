@@ -22,6 +22,10 @@ function relaunchApp() {
   app.exit(0);
 }
 
+// Force a fresh userData directory to bypass any OS-level DPAPI profile corruption
+// (e.g. from sudden shutdowns) for all users, including Sandbox users.
+app.setPath('userData', path.join(app.getPath('appData'), 'ping-ping-v2'));
+
 // Prevent multiple instances
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
