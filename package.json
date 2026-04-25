@@ -5,7 +5,8 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "dev": "electron . --dev"
+    "dev": "electron . --dev",
+    "ping": "node ping.js"
   },
   "keywords": [
     "ai-agents",
@@ -18,6 +19,7 @@
   "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
+    "node-notifier": "^10.0.1",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

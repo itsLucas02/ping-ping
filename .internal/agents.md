@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-ping-ping is a Windows system tray notification relay for AI agents. It's an Electron app (tray-only mode) with an Express HTTP API that accepts notifications and shows native Windows toast notifications.
+ping-ping is a local tray notification relay for AI agents. It is Electron-based (tray-only mode) with an Express HTTP API that accepts notifications and shows native desktop notifications.
 
 ## Tech Stack
 
@@ -10,7 +10,9 @@ ping-ping is a Windows system tray notification relay for AI agents. It's an Ele
 - **HTTP Server**: Express on `localhost:19999`
 - **Notifications**: Electron `Notification` API (native Windows toasts)
 - **Dashboard**: Vanilla HTML/CSS/JS served by Electron BrowserWindow
-- **Storage**: JSON file at `%APPDATA%/ping-ping/notifications.json`
+- **Storage**:
+  - Windows: `%APPDATA%/ping-ping/notifications.json`
+  - macOS: `~/Library/Application Support/ping-ping-v2/notifications.json`
 
 ## Project Structure
 
@@ -68,20 +70,30 @@ ping-ping/
 ```bash
 npm install       # Install dependencies
 npm start         # Run the app (Electron)
+npm run ping -- --title "Codex" --message "Hello" --status info
 ```
 
 ## Integration with Codex CLI
 
-To have your Codex CLI agent use **ping-ping** for all updates, approvals, and completions safely on Windows, add the following to its workflow or system instructions:
+To have your Codex CLI agent use **ping-ping** for all updates, approvals, and completions, add the following to its workflow or system instructions.
 
-### Recommended Command (PowerShell)
+### Recommended Commands (Cross-Platform)
 
-**Highly Recommended: Use the `ping.ps1` helper.**
-If the `ping.ps1` helper is available in your workspace, always prefer it over `curl`. It handles JSON encoding natively **and will automatically launch the ping-ping app in the background if the user forgot to start it.**
+Prefer the helper scripts over raw `curl`:
+
+- macOS / Linux:
+
+```bash
+./ping.sh --title "Codex" --message "[Your Message Here]" --status "[status]"
+```
+
+- Windows:
 
 ```powershell
 .\ping.ps1 -Title "Codex" -Message "[Your Message Here]" -Status "[status]"
 ```
+
+If a helper script is available in the workspace, always prefer it over `curl`. The helpers handle JSON encoding natively and can automatically launch the ping-ping app in the background if it is offline.
 
 If the helper is *not* available, avoid using inline JSON with `curl` on Windows. Instead, use the native `Invoke-RestMethod` command:
 
@@ -101,3 +113,12 @@ Use the following instruction to ensure Codex pings you for everything:
 > - **Long Tasks Started**: Use `status: "busy"`
 >
 > Always send a ping immediately when you are blocked or have finished a step."
+
+### Mandatory Owner-Attention Rule
+
+- If the owner needs to answer a question, approve an action, review a result, or is otherwise needed to unblock progress, send a ping immediately.
+- Do not wait for the final reply if owner attention is needed now.
+- Recommended mapping:
+  - Owner input / questions / approvals: `status: "warning"`
+  - Immediate attention / blocked / something failed: `status: "error"`
+  - Routine progress / answer ready: `status: "info"`

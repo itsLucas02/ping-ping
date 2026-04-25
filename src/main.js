@@ -10,6 +10,7 @@ const {
 } = require("electron");
 const path = require("path");
 const { spawn } = require("child_process");
+const notifier = require("node-notifier");
 const { createServer } = require("./server");
 const { PORT } = require("./config");
 
@@ -44,7 +45,12 @@ let flashTimeout = null;
 
 app.whenReady().then(async () => {
   // Hide from taskbar/alt-tab — tray only
-  app.setAppUserModelId("com.pingping.app");
+  if (process.platform === "win32") {
+    app.setAppUserModelId("com.pingping.app");
+  }
+  if (process.platform === "darwin" && app.dock) {
+    app.dock.hide();
+  }
 
   setupTray();
   setupDashboardWindow();
@@ -185,12 +191,34 @@ const STATUS_ICONS = {
 };
 
 function showToast({ title, message, status }) {
+  const icon = STATUS_ICONS[status] || "ℹ️";
+  const resolvedTitle = `${icon} ${title}`;
+
+  if (process.platform === "darwin") {
+    notifier.notify(
+      {
+        title: resolvedTitle,
+        message,
+        sound: "default",
+        wait: true,
+        appID: "com.pingping.app",
+        icon: path.join(__dirname, "..", "assets", "icon.png"),
+      },
+      () => {}
+    );
+    notifier.once("click", () => {
+      if (dashboardWindow) {
+        dashboardWindow.show();
+        dashboardWindow.focus();
+      }
+    });
+    return;
+  }
+
   if (!Notification.isSupported()) return;
 
-  const icon = STATUS_ICONS[status] || "ℹ️";
-
   const notif = new Notification({
-    title: `${icon} ${title}`,
+    title: resolvedTitle,
     body: message,
     icon: path.join(__dirname, "..", "assets", "icon.png"),
     silent: false,

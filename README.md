@@ -1,22 +1,22 @@
-# 🔔 ping-ping
+# ping-ping
 
-A lightweight, local-first Windows notification relay for AI agents.
+A lightweight, local-first notification relay for AI agents.
 
-**ping-ping** runs as a system tray application that listens for HTTP requests and displays native Windows toast notifications. It provides a simple way for CLI-based AI agents (like Codex CLI, Claude Code, or custom scripts) to notify you when long-running tasks are complete or require attention.
+**ping-ping** runs as a tray application that listens for HTTP requests and displays native desktop notifications. It provides a simple way for CLI-based AI agents (like Codex CLI, Claude Code, or custom scripts) to notify you when long-running tasks are complete or require attention.
 
 ## ✨ Features
 
-- 🍞 **Native Windows Toasts**: Instant visual feedback for agent tasks.
+- 🍞 **Native Desktop Notifications**: Instant visual feedback for agent tasks.
 - 📥 **Simple HTTP API**: Send pings with a single `curl` command.
 - 🎨 **Status Levels**: Support for `success`, `error`, `warning`, `info`, and `busy`.
 - 📊 **Glassmorphism Dashboard**: View a beautiful history of all recent notifications.
-- 🌓 **Windows Native Integration**: Minimal footprint, runs in the system tray.
+- 🌓 **Tray App Workflow**: Minimal footprint, runs quietly in the tray/menu bar.
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-- Windows 10 or 11
+- Windows 10 or 11, or macOS
 - [Node.js](https://nodejs.org/) (v16+)
 
 ### Installation
@@ -39,7 +39,11 @@ A lightweight, local-first Windows notification relay for AI agents.
    npm start
    ```
 
-The app will start silently in your **System Tray** (check the taskbar notification area).
+The app will start silently in your tray/menu bar.
+- Windows: check the taskbar notification area
+- macOS: check the menu bar
+
+On first launch on macOS, allow notifications for `Electron` / `ping-ping` when prompted, otherwise the local API can run without visible banners.
 
 ## 🤖 Connecting Your AI Agents
 
@@ -47,13 +51,25 @@ Simply tell your AI agent to run a `curl` command when it finishes a task.
 
 ### Example Usage (cURL)
 
-**⚠️ Note for Windows Users**: Inline JSON in `curl` can often fail due to shell escaping. It's safer to use a payload file or PowerShell (see below).
-
 If using `curl`, save your payload as `ping.json` and use `--data-binary`:
 ```bash
-curl.exe -X POST http://localhost:19999/ping ^
-  -H "Content-Type: application/json" ^
+curl -X POST http://127.0.0.1:19999/ping \
+  -H "Content-Type: application/json" \
   --data-binary @ping.json
+```
+
+### Example Usage (Cross-Platform Helper)
+
+The repo now includes a Node-based helper that works on macOS and Windows and can auto-start `ping-ping` if the server is offline:
+
+```bash
+./ping.sh --title "Codex" --message "Task successfully completed!" --status success
+```
+
+You can also call it directly:
+
+```bash
+node ping.js --title "Codex" --message "Task successfully completed!" --status success
 ```
 
 ### Example Usage (PowerShell)
@@ -71,6 +87,14 @@ For convenience, a `ping.ps1` helper script is included in the root directory. *
 
 ```powershell
 .\ping.ps1 -Title "Codex CLI" -Message "Task successfully completed!" -Status success
+```
+
+### Example Usage (macOS shell wrapper)
+
+For macOS-friendly usage:
+
+```bash
+./ping.sh -Title "Codex CLI" -Message "Task successfully completed!" -Status success
 ```
 
 ### Supported Statuses
