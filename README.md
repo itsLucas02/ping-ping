@@ -127,6 +127,23 @@ Agent title guidance:
 
 Agents should fill `--title` with their own agent/model name, not a hardcoded project default. Examples: `Codex 5.5 High`, `Gemini Pro`, `Claude Opus`, `Kimi K2`, `Qwen Coder`, `DeepSeek`, `Z AI`, `OpenCode`, `Cursor Agent`, `Goose`, or `Aider`. The default status is `success`; agents should pass `--status info`, `--status warning`, `--status error`, or `--status busy` for non-completion updates.
 
+### Agent instruction snippet
+
+Owners can add this to a global agent config or a project-level instruction file such as `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, or similar:
+
+```text
+Use ping-ping for status updates. Run `ping-ping --help` if needed.
+
+Ping me when:
+- you start a long task: status busy
+- you make progress: status info
+- you need my input, approval, or review: status warning
+- you are blocked or something failed: status error
+- you finish successfully: status success
+
+Use your own agent/model name as the title.
+```
+
 Run this for formatting help:
 
 ```bash

@@ -45,6 +45,16 @@ function printHelp() {
   console.log("   error    Blocked, failed, or urgent attention needed.");
   console.log("   info     General progress update.");
   console.log("   busy     Long task started or still running.");
+  console.log("");
+  console.log(" AGENT NOTIFICATION PROTOCOL:");
+  console.log("   Use ping-ping for status updates.");
+  console.log("   Ping the owner when:");
+  console.log("   - You start a long task: --status busy");
+  console.log("   - You make progress: --status info");
+  console.log("   - You need owner input, approval, or review: --status warning");
+  console.log("   - You are blocked or something failed: --status error");
+  console.log("   - You finish successfully: --status success");
+  console.log("   Always use your own agent/model name as --title.");
   console.log("============================================================");
 }
 
