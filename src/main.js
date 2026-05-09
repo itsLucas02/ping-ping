@@ -11,6 +11,7 @@ const {
 const path = require("path");
 const { spawn } = require("child_process");
 const notifier = require("node-notifier");
+const http = require("http");
 const { createServer } = require("./server");
 const { PORT } = require("./config");
 
@@ -68,13 +69,50 @@ app.on("window-all-closed", (e) => {
 // ─── Server lifecycle ─────────────────────────────────────────────────────────
 
 async function startServer() {
-  server = await createServer((notification) => {
-    showToast(notification);
-    flashTray();
-    // Notify dashboard if it's open
-    if (dashboardWindow && !dashboardWindow.isDestroyed()) {
-      dashboardWindow.webContents.send("new-notification", notification);
+  try {
+    server = await createServer((notification) => {
+      showToast(notification);
+      flashTray();
+      // Notify dashboard if it's open
+      if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+        dashboardWindow.webContents.send("new-notification", notification);
+      }
+    });
+  } catch (error) {
+    if (error && error.code === "EADDRINUSE" && await existingServerIsHealthy()) {
+      console.log(`ping-ping is already running on http://localhost:${PORT}`);
+      app.exit(0);
+      return;
     }
+
+    console.error("Failed to start ping-ping server:", error);
+    app.exit(1);
+  }
+}
+
+function existingServerIsHealthy() {
+  return new Promise((resolve) => {
+    const request = http.get(`http://127.0.0.1:${PORT}/health`, { timeout: 2000 }, (response) => {
+      let body = "";
+      response.setEncoding("utf8");
+      response.on("data", (chunk) => {
+        body += chunk;
+      });
+      response.on("end", () => {
+        try {
+          const parsed = JSON.parse(body);
+          resolve(Boolean(parsed.ok));
+        } catch {
+          resolve(false);
+        }
+      });
+    });
+
+    request.on("timeout", () => {
+      request.destroy();
+      resolve(false);
+    });
+    request.on("error", () => resolve(false));
   });
 }
 

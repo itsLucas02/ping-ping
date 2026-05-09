@@ -22,28 +22,37 @@ function printHelp() {
   console.log("   If the ping-ping server is offline, this helper can start it.");
   console.log("");
   console.log(" USAGE:");
-  console.log("   node ping.js --title <string> --message <string> [--status <string>]");
-  console.log("   ./ping.sh --title <string> --message <string> [--status <string>]");
-  console.log("   ./ping.sh -Title <string> -Message <string> [-Status <string>]");
+  console.log('   ping-ping --title "Codex 5.5 High" --message "Task complete" --status success');
+  console.log('   ping-ping -t "Kimi K2" -m "Need your review" -s warning');
+  console.log('   ping-ping -t "Qwen Coder" -m "Starting a long task" -s busy');
   console.log("");
   console.log(" PARAMETERS:");
-  console.log("   --title, -Title     Notification title (required)");
-  console.log("   --message, -Message Notification body (required)");
-  console.log("   --status, -Status   success | error | warning | info | busy");
+  console.log("   --title, -t, -Title     Required. Self-identify with your agent/model name.");
+  console.log("   --message, -m, -Message Notification body.");
+  console.log("   --status, -s, -Status   success | error | warning | info | busy. Default: success");
   console.log("   --token, -Token     Optional auth token; defaults to PING_TOKEN env");
+  console.log("   --start-only        Start ping-ping if offline, then exit without sending a notification");
   console.log("   --no-start          Do not auto-start ping-ping if it is offline");
   console.log("   --help, -h          Show this help");
   console.log("");
-  console.log(" EXAMPLES:");
-  console.log('   ./ping.sh --title "Codex" --message "Task completed" --status success');
-  console.log('   node ping.js -Title "Codex" -Message "Need review" -Status warning');
+  console.log(" TITLE EXAMPLES:");
+  console.log("   Codex 5.5 High, Gemini Pro, Claude Opus, Kimi K2, Qwen Coder,");
+  console.log("   DeepSeek, Z AI, OpenCode, Cursor Agent, Goose, Aider.");
+  console.log("");
+  console.log(" STATUS GUIDE:");
+  console.log("   success  Completion or successful result.");
+  console.log("   warning  Question, approval, or owner review needed.");
+  console.log("   error    Blocked, failed, or urgent attention needed.");
+  console.log("   info     General progress update.");
+  console.log("   busy     Long task started or still running.");
   console.log("============================================================");
 }
 
 function parseArgs(argv) {
   const args = {
-    status: "info",
+    status: "success",
     token: process.env.PING_TOKEN || "",
+    startOnly: false,
     noStart: false,
     help: false,
   };
@@ -63,19 +72,23 @@ function parseArgs(argv) {
       args.help = true;
       continue;
     }
+    if (normalized === "start-only" || normalized === "startonly") {
+      args.startOnly = true;
+      continue;
+    }
     if (normalized === "no-start" || normalized === "nostart") {
       args.noStart = true;
       continue;
     }
-    if (normalized === "title") {
+    if (normalized === "title" || normalized === "t") {
       args.title = takeValue();
       continue;
     }
-    if (normalized === "message") {
+    if (normalized === "message" || normalized === "m") {
       args.message = takeValue();
       continue;
     }
-    if (normalized === "status") {
+    if (normalized === "status" || normalized === "s") {
       args.status = takeValue();
       continue;
     }
@@ -127,7 +140,7 @@ function startServerInBackground() {
   const err = fs.openSync(logFile, "a");
   const args = [electronCli, "."];
 
-  if (process.platform === "linux") {
+  if (process.platform === "linux" || process.platform === "win32") {
     args.push("--no-sandbox");
   }
 
@@ -192,19 +205,30 @@ async function sendPing({ title, message, status, token }) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (args.help || (!args.title && !args.message)) {
+  if (args.help) {
     printHelp();
+    process.exit(0);
+  }
+
+  if (args.startOnly) {
+    await ensureServerRunning({ noStart: args.noStart });
+    console.log("ping-ping is running.");
     process.exit(0);
   }
 
   const title = String(args.title || "").trim();
   const message = String(args.message || "").trim();
-  const status = String(args.status || "info")
+  const status = String(args.status || "success")
     .trim()
     .toLowerCase();
 
-  if (!title || !message) {
-    throw new Error("Both --title and --message are required. Run `node ping.js --help`.");
+  if (!title) {
+    throw new Error(
+      'Missing title. Self-identify with --title "Your Agent/Model Name". Example: ping-ping --title "Kimi K2" --message "Task complete" --status success',
+    );
+  }
+  if (!message) {
+    throw new Error('Missing message. Use --message "Message text". Run `ping-ping --help`.');
   }
   if (!VALID_STATUSES.has(status)) {
     throw new Error(`Invalid status '${args.status}'. Use: success, error, warning, info, busy.`);

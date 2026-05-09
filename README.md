@@ -45,6 +45,8 @@ The app will start silently in your tray/menu bar.
 
 On first launch on macOS, allow notifications for `Electron` / `ping-ping` when prompted, otherwise the local API can run without visible banners.
 
+`npm start` is safe to run repeatedly: if ping-ping is already healthy on port `19999`, it exits successfully instead of launching a duplicate app.
+
 ## 🤖 Connecting Your AI Agents
 
 Simply tell your AI agent to run a `curl` command when it finishes a task.
@@ -95,6 +97,40 @@ For macOS-friendly usage:
 
 ```bash
 ./ping.sh -Title "Codex CLI" -Message "Task successfully completed!" -Status success
+```
+
+### Agent-safe startup
+
+When an AI agent needs to boot ping-ping before sending notifications, use:
+
+```bash
+npm start
+```
+
+from the ping-ping project folder. This checks whether the local relay is already healthy before launching a new background Electron process.
+
+### Global helper command
+
+After linking/installing this project as a command, agents can use `ping-ping` from any folder:
+
+```bash
+ping-ping --title "Codex 5.5 High" --message "Task complete" --status success
+```
+
+Short form:
+
+```bash
+ping-ping -t "Kimi K2" -m "Need your review" -s warning
+```
+
+Agent title guidance:
+
+Agents should fill `--title` with their own agent/model name, not a hardcoded project default. Examples: `Codex 5.5 High`, `Gemini Pro`, `Claude Opus`, `Kimi K2`, `Qwen Coder`, `DeepSeek`, `Z AI`, `OpenCode`, `Cursor Agent`, `Goose`, or `Aider`. The default status is `success`; agents should pass `--status info`, `--status warning`, `--status error`, or `--status busy` for non-completion updates.
+
+Run this for formatting help:
+
+```bash
+ping-ping --help
 ```
 
 ### Supported Statuses

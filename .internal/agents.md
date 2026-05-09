@@ -79,7 +79,18 @@ To have your Codex CLI agent use **ping-ping** for all updates, approvals, and c
 
 ### Recommended Commands (Cross-Platform)
 
-Prefer the helper scripts over raw `curl`:
+**Best if installed globally: use the `ping-ping` command.**
+It auto-starts the local ping-ping app if needed, then sends the notification.
+
+```powershell
+ping-ping --title "Codex 5.5 High" --message "[Your Message Here]" --status success
+```
+
+Run `ping-ping --help` for formatting and status meanings. The `--title` value should be your own agent/model name. Do not use generic names like `Agent` when you can identify yourself. Examples: `Codex 5.5 High`, `Gemini Pro`, `Claude Opus`, `Kimi K2`, `Qwen Coder`, `DeepSeek`, `Z AI`, `OpenCode`, `Cursor Agent`, `Goose`, or `Aider`.
+
+For progress, approval, blocked, or long-running notifications, always pass the explicit `--status` value.
+
+If the global command is unavailable, prefer the helper scripts over raw `curl`.
 
 - macOS / Linux:
 
