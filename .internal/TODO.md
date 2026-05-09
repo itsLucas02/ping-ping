@@ -39,7 +39,7 @@
 ## 🚀 Future (v2+)
 
 - [ ] Two-way approval — approve/reject from notification
-- [ ] CLI helper tool (`ping-ping "message"`)
+- [x] CLI helper tool (`ping-ping --title "Agent Name" --message "Message" --status success`)
 - [ ] Sound customization per status type
 - [ ] Do Not Disturb mode
 - [ ] Webhook forwarding (Slack, Discord, ntfy.sh)
