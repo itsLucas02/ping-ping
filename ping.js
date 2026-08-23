@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
 
-const APP_VERSION = "1.1.0";
+const APP_VERSION = "1.2.0";
 const ROOT_DIR = __dirname;
 const PORT = 19999;
 const HEALTH_URL = `http://127.0.0.1:${PORT}/health`;
@@ -33,6 +33,7 @@ function printHelp() {
   console.log("   --token, -Token     Optional auth token; defaults to PING_TOKEN env");
   console.log("   --start-only        Start ping-ping if offline, then exit without sending a notification");
   console.log("   --no-start          Do not auto-start ping-ping if it is offline");
+  console.log("   --version, -v       Print the ping-ping version");
   console.log("   --help, -h          Show this help");
   console.log("");
   console.log(" TITLE EXAMPLES:");
@@ -64,6 +65,7 @@ function parseArgs(argv) {
     token: process.env.PING_TOKEN || "",
     startOnly: false,
     noStart: false,
+    version: false,
     help: false,
   };
 
@@ -80,6 +82,10 @@ function parseArgs(argv) {
 
     if (normalized === "help" || normalized === "h") {
       args.help = true;
+      continue;
+    }
+    if (normalized === "version" || normalized === "v") {
+      args.version = true;
       continue;
     }
     if (normalized === "start-only" || normalized === "startonly") {
@@ -215,6 +221,10 @@ async function sendPing({ title, message, status, token }) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  if (args.version) {
+    console.log(`ping-ping v${APP_VERSION}`);
+    process.exit(0);
+  }
   if (args.help) {
     printHelp();
     process.exit(0);

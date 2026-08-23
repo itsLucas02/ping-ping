@@ -2,6 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src http://127.0.0.1:19999 http://localhost:19999"
+    />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ping-ping — Dashboard</title>
     <link rel="stylesheet" href="styles.css" />
@@ -11,51 +15,105 @@
       <!-- Header -->
       <header class="header">
         <div class="header-left">
-          <span class="logo">🔔</span>
+          <span class="logo" aria-hidden="true">🔔</span>
           <h1 class="title">ping-ping</h1>
-          <span class="subtitle">by Aizzul</span>
         </div>
         <div class="header-right">
-          <div class="status-dot" id="statusDot" title="Server status"></div>
-          <span class="status-label" id="statusLabel">Connecting…</span>
-          <button
-            class="btn-restart"
-            id="restartBtn"
-            title="Restart the ping-ping server"
-          >
-            ↺ Restart
+          <button class="btn subtle" id="markAllReadBtn" hidden>
+            Mark all read
           </button>
+          <span class="status-pill" id="statusPill">
+            <span class="status-dot" id="statusDot" title="Server status"></span>
+            <span class="status-label" id="statusLabel">Connecting…</span>
+          </span>
           <button
-            class="btn-clear"
-            id="clearBtn"
-            title="Clear all notifications"
+            class="btn subtle"
+            id="settingsBtn"
+            aria-expanded="false"
+            aria-controls="settingsPanel"
+            title="Settings"
           >
-            🗑 Clear
+            Settings
+          </button>
+          <button class="btn subtle danger" id="clearBtn" title="Clear all notifications">
+            Clear
           </button>
         </div>
       </header>
 
-      <!-- Notification count bar -->
-      <div class="count-bar">
-        <span class="count-label" id="countLabel">No notifications yet</span>
-        <span class="port-badge">:19999</span>
+      <!-- Settings panel -->
+      <section class="settings-panel" id="settingsPanel" hidden aria-label="Settings">
+        <div class="settings-inner">
+          <label class="setting-row">
+            <input type="checkbox" id="soundToggle" />
+            <span>Play a sound with notifications</span>
+          </label>
+          <label class="setting-row">
+            <input type="checkbox" id="launchToggle" />
+            <span>Launch ping-ping at login</span>
+          </label>
+          <div class="setting-actions">
+            <button class="btn primary" id="testPingBtn">Send test ping</button>
+            <button class="btn subtle" id="restartBtn" title="Restart the ping-ping server">
+              ↺ Restart server
+            </button>
+          </div>
+          <p class="connection-info" id="connectionInfo"></p>
+        </div>
+      </section>
+
+      <!-- Toolbar: filters + search -->
+      <div class="toolbar">
+        <div class="filters" id="filters" role="group" aria-label="Filter by status"></div>
+        <div class="toolbar-right">
+          <span class="count-label" id="countLabel"></span>
+          <input
+            type="search"
+            id="searchInput"
+            placeholder="Search…"
+            aria-label="Search notifications"
+          />
+        </div>
       </div>
 
       <!-- Notification list -->
-      <main class="notification-list" id="notificationList">
-        <!-- Empty state -->
-        <div class="empty-state" id="emptyState">
-          <div class="empty-icon">📭</div>
-          <p class="empty-title">No notifications yet</p>
-          <p class="empty-sub">Agents can ping you via:</p>
-          <code class="empty-code"
-            >curl -X POST http://localhost:19999/ping<br />
-            -H "Content-Type: application/json"<br />
-            -d '{"title":"Agent","message":"Done!","status":"success"}'</code
-          >
+      <main class="notification-list" id="notificationList" role="log" aria-live="polite">
+        <!-- Empty state: first run -->
+        <div class="empty-state" id="emptyTeach">
+          <div class="empty-icon" aria-hidden="true">📭</div>
+          <p class="empty-title">No pings yet</p>
+          <p class="empty-sub">When your agents ping you, they'll show up here.</p>
+          <details class="empty-details">
+            <summary>How to send the first ping</summary>
+            <div class="snippet-wrap">
+              <code class="empty-code" id="emptySnippet"></code>
+              <button class="btn subtle" id="copySnippetBtn">Copy</button>
+            </div>
+            <div class="empty-actions">
+              <button class="btn subtle" id="testPingEmptyBtn">Send test ping</button>
+            </div>
+          </details>
+        </div>
+        <!-- Empty state: filters matched nothing -->
+        <div class="empty-state" id="emptyFiltered" hidden>
+          <div class="empty-icon" aria-hidden="true">🔍</div>
+          <p class="empty-title">Nothing matches</p>
+          <p class="empty-sub">Try a different filter or search term.</p>
         </div>
       </main>
+
+      <!-- Keyboard hints -->
+      <footer class="hints" aria-hidden="true">
+        <span><kbd>/</kbd> search</span>
+        <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+        <span><kbd>C</kbd> copy</span>
+        <span><kbd>Del</kbd> delete</span>
+        <span><kbd>Esc</kbd> close</span>
+      </footer>
     </div>
+
+    <!-- Toasts -->
+    <div class="toast-region" id="toastRegion" role="status"></div>
 
     <script src="app.js"></script>
   </body>

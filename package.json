@@ -1,6 +1,6 @@
 {
   "name": "ping-ping",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "A Windows notification relay for AI agents - system tray app with HTTP API for toast notifications",
   "main": "src/main.js",
   "bin": {

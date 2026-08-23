@@ -5,15 +5,16 @@ const {
   BrowserWindow,
   Notification,
   nativeImage,
-  shell,
   ipcMain,
 } = require("electron");
 const path = require("path");
+const fs = require("fs");
 const { spawn } = require("child_process");
 const notifier = require("node-notifier");
 const http = require("http");
 const { createServer } = require("./server");
-const { PORT } = require("./config");
+const { PORT, APP_VERSION } = require("./config");
+const { getNotifications } = require("./store");
 
 // Fully relaunch the Electron process — reliable on Windows via npm start
 function relaunchApp() {
@@ -39,8 +40,74 @@ let tray = null;
 let dashboardWindow = null;
 let server = null;
 
-// Status icon flash timeout
-let flashTimeout = null;
+// App state
+let paused = false;
+let unreadCount = 0;
+let recentPings = [];
+let settings = { sound: true, launchAtLogin: false };
+
+// Icon cache
+let normalTrayIcon = null;
+let dimTrayIcon = null;
+
+// Timers
+let flashTimeouts = [];
+let boundsSaveTimer = null;
+
+// ─── Paths & small file helpers ──────────────────────────────────────────────
+
+const iconPath = () => path.join(__dirname, "..", "assets", "icon.png");
+const settingsFile = () => path.join(app.getPath("userData"), "settings.json");
+const boundsFile = () => path.join(app.getPath("userData"), "window-bounds.json");
+
+function loadJson(file, fallback) {
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch {
+    return fallback;
+  }
+}
+
+function saveJson(file, data) {
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf8");
+  } catch {
+    // Non-fatal: preferences/bounds are best-effort
+  }
+}
+
+// ─── Settings ────────────────────────────────────────────────────────────────
+
+function loadSettings() {
+  const stored = loadJson(settingsFile(), {});
+  settings = { ...settings, ...stored };
+  applyLaunchAtLogin();
+}
+
+function persistSettings() {
+  saveJson(settingsFile(), settings);
+}
+
+function applyLaunchAtLogin() {
+  try {
+    app.setLoginItemSettings({
+      openAsHidden: true,
+      args: ["--hidden"],
+      openAtLogin: Boolean(settings.launchAtLogin),
+    });
+  } catch {
+    // Not supported on all platforms
+  }
+}
+
+function setSetting(patch) {
+  settings = { ...settings, ...patch };
+  persistSettings();
+  applyLaunchAtLogin();
+  if (typeof patch.launchAtLogin === "boolean") buildTrayMenu();
+  return { ...settings };
+}
 
 // ─── App Ready ────────────────────────────────────────────────────────────────
 
@@ -53,12 +120,13 @@ app.whenReady().then(async () => {
     app.dock.hide();
   }
 
+  loadSettings();
+  recentPings = getNotifications().slice(0, 5);
+
   setupTray();
   setupDashboardWindow();
+  registerIpc();
   await startServer();
-
-  // IPC: dashboard restart button — full app relaunch
-  ipcMain.handle("restart-server", () => relaunchApp());
 });
 
 app.on("window-all-closed", (e) => {
@@ -66,13 +134,55 @@ app.on("window-all-closed", (e) => {
   e.preventDefault();
 });
 
+// ─── IPC ─────────────────────────────────────────────────────────────────────
+
+function registerIpc() {
+  // Dashboard restart button — full app relaunch
+  ipcMain.handle("restart-server", () => relaunchApp());
+
+  // Hide dashboard (Esc key)
+  ipcMain.on("window:hide", () => {
+    if (dashboardWindow && !dashboardWindow.isDestroyed()) dashboardWindow.hide();
+  });
+
+  // Unread count reported by the dashboard — reflected in tray tooltip/menu
+  ipcMain.on("unread:set", (_event, count) => {
+    const next = Number(count) || 0;
+    if (next === unreadCount) return;
+    unreadCount = next;
+    updateTooltip();
+    buildTrayMenu();
+  });
+
+  // Settings read/write
+  ipcMain.handle("settings:get", () => ({ ...settings }));
+  ipcMain.handle("settings:set", (_event, patch) =>
+    setSetting(patch && typeof patch === "object" ? patch : {}),
+  );
+
+  // Connection info for the settings panel
+  ipcMain.handle("info:get", () => ({
+    version: APP_VERSION,
+    port: PORT,
+    tokenRequired: Boolean(process.env.PING_TOKEN),
+    platform: process.platform,
+  }));
+}
+
 // ─── Server lifecycle ─────────────────────────────────────────────────────────
 
 async function startServer() {
   try {
     server = await createServer((notification) => {
-      showToast(notification);
-      flashTray();
+      recentPings.unshift(notification);
+      recentPings = recentPings.slice(0, 5);
+      buildTrayMenu();
+
+      if (!paused) {
+        showToast(notification);
+        flashTray();
+      }
+
       // Notify dashboard if it's open
       if (dashboardWindow && !dashboardWindow.isDestroyed()) {
         dashboardWindow.webContents.send("new-notification", notification);
@@ -118,13 +228,38 @@ function existingServerIsHealthy() {
 
 // ─── Tray ─────────────────────────────────────────────────────────────────────
 
+function ensureTrayIcons() {
+  if (normalTrayIcon) return;
+  const base = nativeImage.createFromPath(iconPath()).resize({ width: 16, height: 16 });
+  normalTrayIcon = base;
+
+  // Channel-order agnostic dimming: scale every color channel down, keep alpha.
+  const buf = Buffer.from(base.toBitmap());
+  for (let i = 0; i < buf.length; i += 4) {
+    buf[i] = Math.floor(buf[i] * 0.22);
+    buf[i + 1] = Math.floor(buf[i + 1] * 0.22);
+    buf[i + 2] = Math.floor(buf[i + 2] * 0.22);
+  }
+  dimTrayIcon = nativeImage.createFromBitmap(buf, { width: 16, height: 16 });
+}
+
+function refreshTrayImage() {
+  if (!tray) return;
+  ensureTrayIcons();
+  tray.setImage(paused ? dimTrayIcon : normalTrayIcon);
+}
+
+function updateTooltip() {
+  if (!tray) return;
+  const parts = [`ping-ping — port ${PORT}`];
+  if (unreadCount > 0) parts.push(`${unreadCount} unread`);
+  if (paused) parts.push("paused");
+  tray.setToolTip(parts.join(" · "));
+}
+
 function setupTray() {
-  const iconPath = path.join(__dirname, "..", "assets", "icon.png");
-  const icon = nativeImage.createFromPath(iconPath);
-
-  tray = new Tray(icon.resize({ width: 16, height: 16 }));
-  tray.setToolTip(`ping-ping — listening on port ${PORT}`);
-
+  tray = new Tray(nativeImage.createFromPath(iconPath()).resize({ width: 16, height: 16 }));
+  updateTooltip();
   buildTrayMenu();
 
   tray.on("double-click", () => {
@@ -133,25 +268,42 @@ function setupTray() {
 }
 
 function buildTrayMenu() {
+  const statusLine = `${paused ? "Paused" : "Listening"} on :${PORT}${
+    unreadCount > 0 ? ` · ${unreadCount} unread` : ""
+  }`;
+
+  const recentItems = recentPings.map((n) => ({
+    label: `${STATUS_ICONS[n.status] || "ℹ️"} ${n.title}: ${String(n.message).slice(0, 48)}`,
+    click: () => showDashboard(),
+  }));
+
   const contextMenu = Menu.buildFromTemplate([
-    {
-      label: "🔔 ping-ping",
-      enabled: false,
-    },
+    { label: `🔔 ping-ping v${APP_VERSION}`, enabled: false },
+    { label: statusLine, enabled: false },
     { type: "separator" },
     {
-      label: "Open Dashboard",
-      click: () => toggleDashboard(),
+      label: "Pause Notifications",
+      type: "checkbox",
+      checked: paused,
+      click: (item) => {
+        paused = item.checked;
+        refreshTrayImage();
+        updateTooltip();
+        buildTrayMenu();
+      },
     },
     {
-      label: `Listening on :${PORT}`,
-      enabled: false,
+      label: "Launch at Login",
+      type: "checkbox",
+      checked: Boolean(settings.launchAtLogin),
+      click: (item) => setSetting({ launchAtLogin: item.checked }),
     },
+    ...(recentItems.length > 0
+      ? [{ type: "separator" }, ...recentItems]
+      : []),
     { type: "separator" },
-    {
-      label: "↺ Restart Server",
-      click: () => relaunchApp(),
-    },
+    { label: "Open Dashboard", click: () => showDashboard() },
+    { label: "↺ Restart Server", click: () => relaunchApp() },
     { type: "separator" },
     {
       label: "Quit",
@@ -164,32 +316,64 @@ function buildTrayMenu() {
 }
 
 function flashTray() {
-  if (flashTimeout) clearTimeout(flashTimeout);
-  const alertIconPath = path.join(__dirname, "..", "assets", "icon.png");
-  const icon = nativeImage.createFromPath(alertIconPath);
-  tray.setImage(icon.resize({ width: 16, height: 16 }));
-  flashTimeout = setTimeout(() => {
-    // Restore normal icon after 5s
-    const normalIcon = nativeImage.createFromPath(
-      path.join(__dirname, "..", "assets", "icon.png"),
-    );
-    tray.setImage(normalIcon.resize({ width: 16, height: 16 }));
-    flashTimeout = null;
-  }, 5000);
+  if (!tray || paused) return;
+  ensureTrayIcons();
+
+  flashTimeouts.forEach(clearTimeout);
+  let dimmed = true;
+  flashTimeouts = [280, 560, 840].map((delay) =>
+    setTimeout(() => {
+      tray.setImage(dimmed ? dimTrayIcon : normalTrayIcon);
+      dimmed = !dimmed;
+    }, delay),
+  );
+  flashTimeouts.push(
+    setTimeout(() => {
+      tray.setImage(normalTrayIcon);
+      flashTimeouts = [];
+    }, 1120),
+  );
 }
 
 // ─── Dashboard Window ─────────────────────────────────────────────────────────
 
+function savedWindowBounds() {
+  const b = loadJson(boundsFile(), null);
+  if (
+    b &&
+    Number.isFinite(b.x) && Number.isFinite(b.y) &&
+    Number.isFinite(b.width) && b.width >= 400 && b.height >= 300
+  ) {
+    return b;
+  }
+  return null;
+}
+
+function saveWindowBounds() {
+  if (!dashboardWindow || dashboardWindow.isDestroyed()) return;
+  if (!dashboardWindow.isVisible()) return;
+  saveJson(boundsFile(), dashboardWindow.getBounds());
+}
+
+function scheduleBoundsSave() {
+  clearTimeout(boundsSaveTimer);
+  boundsSaveTimer = setTimeout(saveWindowBounds, 500);
+}
+
 function setupDashboardWindow() {
+  const bounds = savedWindowBounds();
+
   dashboardWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: bounds ? bounds.width : 800,
+    height: bounds ? bounds.height : 600,
+    x: bounds ? bounds.x : undefined,
+    y: bounds ? bounds.y : undefined,
     minWidth: 600,
     minHeight: 400,
     show: false,
     frame: true,
     title: "ping-ping — Dashboard",
-    icon: path.join(__dirname, "..", "assets", "icon.png"),
+    icon: iconPath(),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -200,11 +384,23 @@ function setupDashboardWindow() {
 
   dashboardWindow.loadFile(path.join(__dirname, "dashboard", "index.html"));
 
+  dashboardWindow.on("resize", scheduleBoundsSave);
+  dashboardWindow.on("move", scheduleBoundsSave);
+
   // Hide instead of close when user hits X
   dashboardWindow.on("close", (e) => {
+    saveWindowBounds();
     e.preventDefault();
     dashboardWindow.hide();
   });
+}
+
+function showDashboard() {
+  if (!dashboardWindow || dashboardWindow.isDestroyed()) {
+    setupDashboardWindow();
+  }
+  dashboardWindow.show();
+  dashboardWindow.focus();
 }
 
 function toggleDashboard() {
@@ -214,8 +410,7 @@ function toggleDashboard() {
   if (dashboardWindow.isVisible()) {
     dashboardWindow.hide();
   } else {
-    dashboardWindow.show();
-    dashboardWindow.focus();
+    showDashboard();
   }
 }
 
@@ -226,21 +421,23 @@ const STATUS_ICONS = {
   error: "❌",
   warning: "⚠️",
   info: "ℹ️",
+  busy: "⏳",
 };
 
 function showToast({ title, message, status }) {
   const icon = STATUS_ICONS[status] || "ℹ️";
   const resolvedTitle = `${icon} ${title}`;
+  const soundEnabled = settings.sound !== false;
 
   if (process.platform === "darwin") {
     notifier.notify(
       {
         title: resolvedTitle,
         message,
-        sound: "default",
+        sound: soundEnabled ? "default" : false,
         wait: true,
         appID: "com.pingping.app",
-        icon: path.join(__dirname, "..", "assets", "icon.png"),
+        icon: iconPath(),
       },
       () => {}
     );
@@ -258,8 +455,8 @@ function showToast({ title, message, status }) {
   const notif = new Notification({
     title: resolvedTitle,
     body: message,
-    icon: path.join(__dirname, "..", "assets", "icon.png"),
-    silent: false,
+    icon: iconPath(),
+    silent: !soundEnabled,
   });
 
   notif.on("click", () => {

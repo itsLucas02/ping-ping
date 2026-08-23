@@ -27,6 +27,7 @@ function addNotification({ title, message, status }) {
     title,
     message,
     status: status || "info",
+    read: false,
     timestamp: new Date().toISOString(),
   };
   // Newest first, cap at MAX_NOTIFICATIONS
@@ -34,17 +35,50 @@ function addNotification({ title, message, status }) {
   if (notifications.length > MAX_NOTIFICATIONS) {
     notifications.length = MAX_NOTIFICATIONS;
   }
-  fs.writeFileSync(
-    getDataFile(),
-    JSON.stringify(notifications, null, 2),
-    "utf8",
-  );
+  writeAll(notifications);
   return entry;
+}
+
+function deleteNotification(id) {
+  ensureStore();
+  const notifications = getNotifications();
+  const next = notifications.filter((n) => n.id !== id);
+  if (next.length === notifications.length) return false;
+  writeAll(next);
+  return true;
+}
+
+function markNotificationsRead({ ids, all } = {}) {
+  ensureStore();
+  const notifications = getNotifications();
+  const idSet = Array.isArray(ids) ? new Set(ids) : null;
+  let updated = 0;
+
+  for (const n of notifications) {
+    if (n.read) continue;
+    if (all || (idSet && idSet.has(n.id))) {
+      n.read = true;
+      updated += 1;
+    }
+  }
+
+  if (updated > 0) writeAll(notifications);
+  return updated;
 }
 
 function clearNotifications() {
   ensureStore();
-  fs.writeFileSync(getDataFile(), JSON.stringify([]), "utf8");
+  writeAll([]);
 }
 
-module.exports = { getNotifications, addNotification, clearNotifications };
+function writeAll(notifications) {
+  fs.writeFileSync(getDataFile(), JSON.stringify(notifications, null, 2), "utf8");
+}
+
+module.exports = {
+  getNotifications,
+  addNotification,
+  deleteNotification,
+  markNotificationsRead,
+  clearNotifications,
+};

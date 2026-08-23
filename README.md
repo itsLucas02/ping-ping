@@ -9,8 +9,13 @@ A lightweight, local-first notification relay for AI agents.
 - 🍞 **Native Desktop Notifications**: Instant visual feedback for agent tasks.
 - 📥 **Simple HTTP API**: Send pings with a single `curl` command.
 - 🎨 **Status Levels**: Support for `success`, `error`, `warning`, `info`, and `busy`.
-- 📊 **Glassmorphism Dashboard**: View a beautiful history of all recent notifications.
-- 🌓 **Tray App Workflow**: Minimal footprint, runs quietly in the tray/menu bar.
+- 📊 **Dashboard**: Filter by status, search, copy messages, delete individual pings, and browse history grouped by day.
+- 👁️ **Unread Tracking**: New pings are highlighted until you've seen them; the tray shows the count.
+- 🌙 **Pause Mode**: Silence toasts from the tray menu without stopping agents from recording history.
+- ⚙️ **Settings**: Sound toggle, launch-at-login, one-click test ping, connection info.
+- ⌨️ **Keyboard Shortcuts**: `/` search · `↑`/`↓` navigate · `C` copy · `Del` delete · `Esc` close.
+- 🖥️ **Tray App Workflow**: Minimal footprint, runs quietly in the tray/menu bar; window size and position are remembered.
+- 🔒 **Local-only API**: Browsers on other websites cannot reach or spam your local relay.
 
 ## 🚀 Getting Started
 
@@ -46,6 +51,13 @@ The app will start silently in your tray/menu bar.
 On first launch on macOS, allow notifications for `Electron` / `ping-ping` when prompted, otherwise the local API can run without visible banners.
 
 `npm start` is safe to run repeatedly: if ping-ping is already healthy on port `19999`, it exits successfully instead of launching a duplicate app.
+
+### Tray menu
+
+- **Pause Notifications** — silence toasts while you focus; pings still land in history.
+- **Launch at Login** — start ping-ping when you sign in (starts hidden).
+- **Recent pings** — the last five, click one to open the dashboard.
+- The tray icon dims while paused and blinks on new arrivals.
 
 ## 🤖 Connecting Your AI Agents
 
@@ -161,14 +173,26 @@ ping-ping --help
 ## 📋 API Reference
 
 - `GET /health`
-  - Returns: `{ "ok": true, "service": "ping-ping", "uptime": 123 }`
+  - Returns: `{ "ok": true, "service": "ping-ping", "version": "1.2.0", "port": 19999, "uptime": 123 }`
 - `POST /ping`
   - Body: `{"title": "string", "message": "string", "status": "string"}` (also accepts `application/x-www-form-urlencoded` or URL query params contextually).
   - Returns `202 Accepted` with `{ "ok": true, "id": "...", "ts": "..." }` on success.
 - `GET /api/notifications`
-  - Retrieve notification history.
+  - Retrieve notification history. Entries include a `read` flag.
+- `POST /api/notifications/mark-read`
+  - Body: `{ "all": true }` or `{ "ids": ["<id>", ...] }`. Returns `{ "ok": true, "updated": n }`.
+- `DELETE /api/notifications/:id`
+  - Remove a single notification. Returns `404 NOT_FOUND` for unknown ids.
 - `DELETE /api/notifications`
   - Clear notification history.
+
+### Local-only access (v1.2.0)
+
+The API now rejects any request carrying a browser `Origin` header other than the
+dashboard's own (`null`) or `http://localhost:19999`. Command-line tools and scripts
+that send no `Origin` header are unaffected. **Breaking change:** if you previously
+called this API from JavaScript on a website, that is blocked by design — web pages
+can no longer read your history or spam pings while you browse.
 
 ### Error Schema
 Failed requests return `400 Bad Request`, `429 Too Many Requests`, or `401 Unauthorized` with a structured JSON error:
