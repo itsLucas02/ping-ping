@@ -5,11 +5,11 @@ const AUTO_MARK_READ_DELAY = 1500;
 const CLEAR_ARM_TIMEOUT = 3000;
 
 const STATUS_ICONS = {
-  success: "✅",
-  error: "❌",
-  warning: "⚠️",
-  info: "ℹ️",
-  busy: "⏳",
+  success: "✓",
+  error: "✕",
+  warning: "!",
+  info: "i",
+  busy: "⋯",
 };
 
 const STATUSES = ["success", "error", "warning", "info", "busy"];
@@ -25,6 +25,7 @@ let autoMarkReadTimer = null;
 let clearArmTimer = null;
 let lastSnapshot = "";
 let prevRenderedIds = new Set();
+let theme = localStorage.getItem("ping-ping-theme") || "dark";
 
 // ─── DOM refs ────────────────────────────────────────────────
 const listEl = document.getElementById("notificationList");
@@ -46,14 +47,46 @@ const testPingEmptyBtn = document.getElementById("testPingEmptyBtn");
 const restartBtn = document.getElementById("restartBtn");
 const connectionInfo = document.getElementById("connectionInfo");
 const toastRegion = document.getElementById("toastRegion");
+const themeToggleBtn = document.getElementById("themeToggleBtn");
+const themeIconSun = document.getElementById("themeIconSun");
+const themeIconMoon = document.getElementById("themeIconMoon");
 
 // ─── Boot ────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", async () => {
+  initTheme();
   setupSnippet();
   await loadSettingsUI();
   attachEvents();
   await fetchAndRender();
 });
+
+function initTheme() {
+  applyTheme(theme);
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener("click", () => {
+      const nextTheme = theme === "dark" ? "light" : "dark";
+      applyTheme(nextTheme);
+    });
+  }
+}
+
+function applyTheme(newTheme) {
+  theme = newTheme;
+  localStorage.setItem("ping-ping-theme", theme);
+  document.documentElement.setAttribute("data-theme", theme);
+
+  if (themeIconSun && themeIconMoon) {
+    if (theme === "dark") {
+      themeIconSun.hidden = true;
+      themeIconMoon.hidden = false;
+      themeToggleBtn.title = "Switch to Light Mode";
+    } else {
+      themeIconSun.hidden = false;
+      themeIconMoon.hidden = true;
+      themeToggleBtn.title = "Switch to Dark Mode";
+    }
+  }
+}
 
 function attachEvents() {
   searchInput.addEventListener("input", () => {
@@ -66,7 +99,7 @@ function attachEvents() {
   clearBtn.addEventListener("click", () => handleClearClick());
   restartBtn.addEventListener("click", handleRestart);
 
-  settingsBtn.addEventListener("click", toggleSettingsPanel);
+  settingsBtn.addEventListener("click", () => toggleSettingsPanel());
   soundToggle.addEventListener("change", () =>
     saveSettings({ sound: soundToggle.checked }),
   );
@@ -225,19 +258,13 @@ function dayLabel(iso) {
   return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
-function agentHue(title) {
-  let h = 0;
-  for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) % 360;
-  return h;
-}
-
 function buildCard(n, animate = false) {
   const s = STATUSES.includes(n.status) ? n.status : "info";
   const icon = STATUS_ICONS[s];
   const unread = !n.read;
 
   const card = document.createElement("article");
-  card.className = `notification-card ${s}${unread ? " unread" : ""}${
+  card.className = `notification-card${unread ? " unread" : ""}${
     n.id === selectedId ? " selected" : ""
   }${animate ? " enter" : ""}`;
   card.dataset.id = n.id;
@@ -245,7 +272,6 @@ function buildCard(n, animate = false) {
 
   const chip = document.createElement("span");
   chip.className = "card-chip";
-  chip.style.setProperty("--agent-hue", String(agentHue(n.title)));
   chip.textContent = icon;
   chip.setAttribute("aria-hidden", "true");
 
@@ -268,7 +294,7 @@ function buildCard(n, animate = false) {
   header.appendChild(title);
 
   const badge = document.createElement("span");
-  badge.className = `card-badge ${s}`;
+  badge.className = "card-badge";
   badge.textContent = s;
   header.appendChild(badge);
 
@@ -335,7 +361,7 @@ function renderChips() {
       dot.setAttribute("aria-hidden", "true");
 
       const text = document.createElement("span");
-      text.textContent = label.charAt(0).toUpperCase() + label.slice(1);
+      text.textContent = label.toUpperCase();
 
       const count = document.createElement("span");
       count.className = "count";

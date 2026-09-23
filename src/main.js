@@ -379,7 +379,7 @@ function setupDashboardWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, "preload.js"),
     },
-    backgroundColor: "#0a0a0f",
+    backgroundColor: "#050505",
   });
 
   dashboardWindow.loadFile(path.join(__dirname, "dashboard", "index.html"));
